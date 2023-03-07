@@ -106,5 +106,5 @@ class Metrics:
         """
         G = nx.Graph()
         G.add_edges_from(bigrams)
-        return {'clustering_average': nx.average_clustering(G),
+        return {'clustering_average': 0, #nx.average_clustering(G),
                 'clustering_transitivity': nx.transitivity(G)}
