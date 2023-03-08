@@ -10,6 +10,7 @@ from src.cooccurrences import Cooccurrences
 from src.metrics import Metrics
 from src.shuffle import Shuffler
 from src.plot import Plotter
+from src.filter import Filter
 
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, allow_abbrev=False)
@@ -36,14 +37,14 @@ args.metrics = args.metrics.split('-')
 if __name__ == '__main__':
     
     # Chose Corpus
-    corpus = {'en': load_dataset("wikipedia", "20220301.en")['train'],}
-              #'fr': load_dataset("wikipedia", "20220301.fr")['train'],
-              #'de': load_dataset("wikipedia", "20220301.de")['train']}
+    corpus = {'en': load_dataset("wikipedia", "20220301.en")['train'],
+              'fr': load_dataset("wikipedia", "20220301.fr")['train'],
+              'de': load_dataset("wikipedia", "20220301.de")['train']}
         
     ## Analysis
     print("\n\n############ Beginning of analysis ############\n\n")
     
-    # Create Metrics and Shuffler objects
+    # Create Metrics object
     metrics = Metrics(metrics = args.metrics)
     
     # Start
@@ -52,8 +53,11 @@ if __name__ == '__main__':
     for lang in corpus.keys():
         print("\tNow analyzing %s..\n" % lang)
 
-        # Create the Cooccurrence and Metrics object
+        # Create the Cooccurrence and Filter object
         cooc = Cooccurrences(silent=True)
+        filter = Filter(language = lang,
+                        nltk_stopwords = True)
+
         idx_to_load = np.random.choice(len(corpus[lang]), args.n_articles)
 
         print("\t### Analyzing vanilla data ###\n")
@@ -71,6 +75,10 @@ if __name__ == '__main__':
         feed_dict = cooc.compute_feed_dict(bigram_counts=True,
                                            list_of_words=True)
 
+        # Filter out some words
+        filter.filter(feed_dict)
+        
+        # Compute Metrics
         analysis_lang = metrics.compute_metrics(feed_dict=feed_dict)
 
         analysis[lang]['vanilla'] = analysis_lang
@@ -91,6 +99,8 @@ if __name__ == '__main__':
             # Compute feed_forward dict
             feed_dict = cooc.compute_feed_dict(bigram_counts=True,
                                                list_of_words=True)
+            
+            filter.filter(feed_dict)
 
             analysis_lang = metrics.compute_metrics(feed_dict=feed_dict)
 
@@ -114,6 +124,8 @@ if __name__ == '__main__':
             # Compute feed_forward dict
             feed_dict = cooc.compute_feed_dict(bigram_counts=True,
                                                list_of_words=True)
+            
+            filter.filter(feed_dict)
 
             analysis_lang = metrics.compute_metrics(feed_dict=feed_dict)
 
@@ -127,4 +139,8 @@ if __name__ == '__main__':
 
     plotter = Plotter(analysis = analysis,
                       metrics = args.metrics)
+    plotter.plot()
+
+    plotter.set_filtered(True)
+
     plotter.plot()

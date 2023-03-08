@@ -1,8 +1,10 @@
 import numpy as np
 
 from sklearn.linear_model import LinearRegression
-import networkx as nx
+#import networkx as nx
+import igraph as ig
 
+from src.utils import convert_bigrams_to_ids
 
 class Metrics:
     """
@@ -21,6 +23,16 @@ class Metrics:
         self.metrics = metrics
 
     def compute_metrics(self, feed_dict):
+        self.filtered_flag = ''
+        metrics_dict = self._compute_metrics(feed_dict)
+
+        self.filtered_flag = 'filtered_'
+        metrics_dict.update(
+                    self._compute_metrics(feed_dict)
+                    )
+        return metrics_dict
+
+    def _compute_metrics(self, feed_dict):
         """
             Run all metrics.
             Args:
@@ -36,22 +48,22 @@ class Metrics:
             print('\t\t\tSparsity...')
             metrics_dict.update(
                         self._compute_sparsity(
-                                num_bigrams = len(feed_dict['bigrams_count']),
-                                num_words = len(feed_dict['list_of_words'])
+                                num_bigrams = len(feed_dict[self.filtered_flag + 'bigrams_count']),
+                                num_words = len(feed_dict[self.filtered_flag + 'list_of_words'])
                                 )
                         )
         if 'zipf_fit' in self.metrics:
             print('\t\t\tZipf Fit...')
             metrics_dict.update(
                         self._compute_zipf_fit(
-                                bigrams_count = feed_dict['bigrams_count']
+                                bigrams_count = feed_dict[self.filtered_flag + 'bigrams_count']
                                 )
                         )
         if 'clustering' in self.metrics:
             print('\t\t\tClustering...')
             metrics_dict.update(
                         self._compute_clustering(
-                                bigrams = list(feed_dict['bigrams_count'].keys())
+                                bigrams = list(feed_dict[self.filtered_flag + 'bigrams_count'].keys())
                                 )
                         )
 
@@ -68,10 +80,10 @@ class Metrics:
                 metric_dict [dict]
         """
         num_cells = num_words**2
-        return {'sparsity_nonzeros': num_bigrams,
-                'sparsity_zeros': num_cells - num_bigrams,
-                'sparsity_prop_nonzeros': num_bigrams/num_cells,
-                'sparsity_prop_zeros': (num_cells - num_bigrams)/num_cells}  
+        return {self.filtered_flag + 'sparsity_nonzeros': num_bigrams,
+                self.filtered_flag + 'sparsity_zeros': num_cells - num_bigrams,
+                self.filtered_flag + 'sparsity_prop_nonzeros': num_bigrams/num_cells,
+                self.filtered_flag + 'sparsity_prop_zeros': (num_cells - num_bigrams)/num_cells}  
 
     def _compute_zipf_fit(self, bigrams_count, eps = 1e-8):
         """
@@ -92,9 +104,9 @@ class Metrics:
         a, b = reg.coef_, reg.intercept_
         Rsq = reg.score(X,y)
 
-        return {'zipf_fit_coeff': a[0],
-                'zipf_fit_intercept': b, 
-                'zipf_fit_R_sq':Rsq}
+        return {self.filtered_flag + 'zipf_fit_coeff': a[0],
+                self.filtered_flag + 'zipf_fit_intercept': b, 
+                self.filtered_flag + 'zipf_fit_R_sq':Rsq}
     
     def _compute_clustering(self, bigrams):
         """
@@ -104,7 +116,8 @@ class Metrics:
             Args:
                 bigrams [list of tuple] ex: [('a', 'a'), ('a', 'b')]
         """
-        G = nx.Graph()
-        G.add_edges_from(bigrams)
-        return {'clustering_average': 0, #nx.average_clustering(G),
-                'clustering_transitivity': nx.transitivity(G)}
+        g = ig.Graph(
+                convert_bigrams_to_ids(bigrams)
+                )
+        return {self.filtered_flag + 'clustering_average': g.transitivity_avglocal_undirected(),
+                self.filtered_flag + 'clustering_transitivity': g.transitivity_undirected()}

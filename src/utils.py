@@ -73,3 +73,30 @@ def from_metrics2compute_to_metrics2plot(metrics2compute):
                                       'clustering_transitivity']
         
     return metrics2plot
+
+def convert_bigrams_to_ids(bigrams):
+    """
+        Take a list of bigrams and returns a list of bigrams ids.
+            ex:
+                [('a', 'b'), ('a','c'), ('b','d')] => [(0,1),(0,2),(1,3)]
+    """
+    token_to_id = {}
+    id = 0
+    new_list = []
+    for w1, w2 in bigrams:
+        if w1 in token_to_id.keys():
+            id1 = token_to_id[w1]
+        else:
+            id1 = id
+            token_to_id[w1] = id
+            id += 1
+
+        if w2 in token_to_id.keys():
+            id2 = token_to_id[w2]
+        else:
+            id2 = id
+            token_to_id[w2] = id
+            id += 1
+        new_list.append((id1, id2))
+    return new_list
+

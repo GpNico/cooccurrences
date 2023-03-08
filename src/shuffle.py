@@ -22,7 +22,7 @@ class Shuffler:
             self.nlp=spacy.load('fr_core_news_sm')
         elif language == 'de':
             self.nlp=spacy.load('de_core_news_sm')
-        self.nlp.max_length = 4000000
+        self.nlp.max_length = 10000000
 
     def token_shuffle(self, text):
         """

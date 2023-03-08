@@ -11,7 +11,7 @@ class Plotter:
         Wrapper Class to plot different metrics.
     """
 
-    def __init__(self, analysis, metrics):
+    def __init__(self, analysis, metrics, filtered = False):
         """
             Args:
                 analysis [dict] keys [str] language
@@ -23,6 +23,9 @@ class Plotter:
         self.analysis = analysis
         self.metrics2compute = metrics
         self.metrics2plot = from_metrics2compute_to_metrics2plot(self.metrics2compute)
+
+        # Filtered flag
+        self.set_filtered(filtered)
 
         # Init things (!)
         self._get_languages()
@@ -67,15 +70,15 @@ class Plotter:
             for cond in self.conditions:
                 if 'vanilla' in cond:
                     vanilla_data.append(
-                        self.analysis[l][cond][metrics[0]]
+                        self.analysis[l][cond][self.filtered_flag + metrics[0]]
                         )
                 elif 'token_shuffled' in cond:
                     token_shuffled_data.append(
-                        self.analysis[l][cond][metrics[0]]
+                        self.analysis[l][cond][self.filtered_flag + metrics[0]]
                         )
                 elif 'pos_shuffled' in cond:
                     pos_shuffled_data.append(
-                        self.analysis[l][cond][metrics[0]]
+                        self.analysis[l][cond][self.filtered_flag + metrics[0]]
                         )
                 else:
                     raise Exception("Unexpected condition %s" % cond)
@@ -101,7 +104,7 @@ class Plotter:
         ax.legend(self.legend, loc = 'lower right')
         ax.grid()
     
-        plt.savefig(self.figname_template % 'sparsity')
+        plt.savefig(self.figname_template % (self.filtered_flag + 'sparsity'))
 
     def _plot_zipf_fit(self):
             metrics = self.metrics2plot['zipf_fit']
@@ -119,15 +122,15 @@ class Plotter:
                     for cond in self.conditions:
                         if 'vanilla' in cond:
                             vanilla_data.append(
-                                self.analysis[l][cond][metrics[k]]
+                                self.analysis[l][cond][self.filtered_flag + metrics[k]]
                                 )
                         elif 'token_shuffled' in cond:
                             token_shuffled_data.append(
-                                self.analysis[l][cond][metrics[k]]
+                                self.analysis[l][cond][self.filtered_flag + metrics[k]]
                                 )
                         elif 'pos_shuffled' in cond:
                             pos_shuffled_data.append(
-                                self.analysis[l][cond][metrics[k]]
+                                self.analysis[l][cond][self.filtered_flag + metrics[k]]
                                 )
                         else:
                             raise Exception("Unexpected condition %s" % cond)
@@ -156,7 +159,7 @@ class Plotter:
                 axs[k].legend(self.legend, loc = 'lower right')
                 axs[k].grid()
         
-            plt.savefig(self.figname_template % 'zipf_fit')
+            plt.savefig(self.figname_template % (self.filtered_flag + 'zipf_fit'))
 
 
     def _plot_clustering(self):
@@ -175,15 +178,15 @@ class Plotter:
                     for cond in self.conditions:
                         if 'vanilla' in cond:
                             vanilla_data.append(
-                                self.analysis[l][cond][metrics[k]]
+                                self.analysis[l][cond][self.filtered_flag + metrics[k]]
                                 )
                         elif 'token_shuffled' in cond:
                             token_shuffled_data.append(
-                                self.analysis[l][cond][metrics[k]]
+                                self.analysis[l][cond][self.filtered_flag + metrics[k]]
                                 )
                         elif 'pos_shuffled' in cond:
                             pos_shuffled_data.append(
-                                self.analysis[l][cond][metrics[k]]
+                                self.analysis[l][cond][self.filtered_flag + metrics[k]]
                                 )
                         else:
                             raise Exception("Unexpected condition %s" % cond)
@@ -212,7 +215,7 @@ class Plotter:
                 axs[k].legend(self.legend, loc = 'lower right')
                 axs[k].grid()
         
-            plt.savefig(self.figname_template % 'clustering')
+            plt.savefig(self.figname_template % (self.filtered_flag + 'clustering'))
 
 
     def _preprocess_saving(self):
@@ -265,4 +268,10 @@ class Plotter:
         elif self.n_cond == 3:
             self.bar_offsets = [0.26, 0.5, 0.74]
             self.bar_width = 0.24
+
+    def set_filtered(self, value: bool):
+        if value:
+            self.filtered_flag = 'filtered_'
+        else:
+            self.filtered_flag = ''
 
