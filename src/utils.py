@@ -1,7 +1,9 @@
 
+import os
 import tqdm
 import pandas as pd
 import numpy as np
+import pickle
 
 
 def retrieve_text_from_wikipedia(wiki_data, idx):
@@ -100,3 +102,36 @@ def convert_bigrams_to_ids(bigrams):
         new_list.append((id1, id2))
     return new_list
 
+def save_analysis(analysis: dict,
+                  languages: list,
+                  n_articles: int,
+                  n_shuffle: int):
+    """
+        Save the analysis dict in results\\dicts
+        Args:
+            analysis [dict] analysis dict
+            languages [list] list of languages
+            n_articles [int] number of articles read
+            n_shuffle [int] number of random points for bootstrapping
+    
+    """
+    print("Saving analysis...")
+
+    # Boring stuff
+    filename = os.path.join("results", "dicts")
+    os.makedirs(filename, exist_ok=True)
+    filename = os.path.join(filename, "")
+    
+    # Add params to the name
+    for lang in languages:
+        filename += '%s_'%lang
+    filename += 'n_articles_%s_n_shuffle_%s_' % (n_articles,
+                                                 n_shuffle)
+
+    # Save    
+    with open('%s.pkl'%filename, 'wb') as file:
+        pickle.dump(analysis, file)
+
+    print("Done!")
+
+    

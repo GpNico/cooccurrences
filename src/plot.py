@@ -11,21 +11,25 @@ class Plotter:
         Wrapper Class to plot different metrics.
     """
 
-    def __init__(self, analysis, metrics, filtered = False):
+    def __init__(self, analysis, args):
         """
             Args:
                 analysis [dict] keys [str] language
                                 values [dict] keys [str] vanilla/shuffle
                                               values [dict] keys [str] keys metrics
                                                             values [float]
-                metrics [List of str] metrics2compute
+                args [argparse]
         """
         self.analysis = analysis
-        self.metrics2compute = metrics
+        self.metrics2compute = args.metrics
         self.metrics2plot = from_metrics2compute_to_metrics2plot(self.metrics2compute)
 
-        # Filtered flag
-        self.set_filtered(filtered)
+        # For naming
+        self.n_articles = args.n_articles
+        self.n_shuffle = args.n_shuffle
+
+        # Filtered flag (no filter at iniziatilation)
+        self.set_filtered('')
 
         # Init things (!)
         self._get_languages()
@@ -225,12 +229,16 @@ class Plotter:
                 - creates templae for file saving
         """
         # Names and related matter
-        if not(os.path.exists('results')):
-            os.mkdir("results")
+        self.figname_template = os.path.join("results", 
+                                             "plots")
+        os.makedirs(self.figname_template, exist_ok=True)
+        self.figname_template = os.path.join(self.figname_template, 
+                                             "")
         
-        self.figname_template = os.path.join("results", "")
         for lang in self.languages:
             self.figname_template += '%s_'%lang
+        self.figname_template += 'n_articles_%s_n_shuffle_%s_' % (self.n_articles,
+                                                                  self.n_shuffle)
         self.figname_template += "%s.png" # to add metrics name later on  
 
     def _get_languages(self):
@@ -269,9 +277,9 @@ class Plotter:
             self.bar_offsets = [0.26, 0.5, 0.74]
             self.bar_width = 0.24
 
-    def set_filtered(self, value: bool):
-        if value:
-            self.filtered_flag = 'filtered_'
-        else:
+    def set_filtered(self, filter: str):
+        if filter == '':
             self.filtered_flag = ''
+        else:
+            self.filtered_flag = 'filtered_%s_' % filter
 

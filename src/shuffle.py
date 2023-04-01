@@ -22,7 +22,7 @@ class Shuffler:
             self.nlp=spacy.load('fr_core_news_sm')
         elif language == 'de':
             self.nlp=spacy.load('de_core_news_sm')
-        self.nlp.max_length = 10000000
+        self.nlp.max_length = 100000000
 
     def token_shuffle(self, text):
         """
@@ -40,12 +40,12 @@ class Shuffler:
             assert self.E_sets
         else:
             print("\t\tCompute POS sequence and Es sets...")
-            self._compute_pos_sequence_and_E_sets(text)
+            self.compute_pos_sequence_and_E_sets(text)
 
         self._shuffle_E_sets()
         return self._generate_text_from_pos()
     
-    def _compute_pos_sequence_and_E_sets(self, text):
+    def compute_pos_sequence_and_E_sets(self, text):
         """"
             For a text [str] 'a b c' we note [p_a, p_b, p_c] its POS
             sequence. E(a) = {w|POS(w) = a} so here E_a = [a] if p_a =/= p_b, p_c.

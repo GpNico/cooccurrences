@@ -18,18 +18,22 @@ class Metrics:
         postprocessing (like plotting). 
     """
 
-    def __init__(self, metrics = ['sparsity', 'zipf_fit']):
+    def __init__(self, metrics: list = [],
+                       filters: list = []):
         # metrics to evaluate
         self.metrics = metrics
+        # Filters
+        self.filters = filters
 
     def compute_metrics(self, feed_dict):
         self.filtered_flag = ''
         metrics_dict = self._compute_metrics(feed_dict)
 
-        self.filtered_flag = 'filtered_'
-        metrics_dict.update(
-                    self._compute_metrics(feed_dict)
-                    )
+        for filter in self.filters:
+            self.filtered_flag = 'filtered_%s_' % filter
+            metrics_dict.update(
+                        self._compute_metrics(feed_dict)
+                        )
         return metrics_dict
 
     def _compute_metrics(self, feed_dict):

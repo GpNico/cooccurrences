@@ -5,7 +5,7 @@ import numpy as np
 
 from datasets import load_dataset
 
-from src.utils import retrieve_text_from_wikipedia
+from src.utils import retrieve_text_from_wikipedia, save_analysis
 from src.cooccurrences import Cooccurrences
 from src.metrics import Metrics
 from src.shuffle import Shuffler
@@ -29,9 +29,18 @@ parser.add_argument('--metrics',
                     default='sparsity-zipf_fit-clustering',
                     dest='metrics',
                     help='Metrics used to evaluate co-occurrences analysis. Separator "-".')
+parser.add_argument('--filters',
+                    type=str,
+                    default='stopwords-content-function',
+                    dest='filters',
+                    help='Which filter to apply: stopwords, content, function. Separator "-".')
+parser.add_argument('--plot',
+                    action='store_true',
+                    help='Plot the results.')
 args = parser.parse_args()
 
 args.metrics = args.metrics.split('-')
+args.filters = args.filters.split('-')
 
 
 if __name__ == '__main__':
@@ -45,7 +54,8 @@ if __name__ == '__main__':
     print("\n\n############ Beginning of analysis ############\n\n")
     
     # Create Metrics object
-    metrics = Metrics(metrics = args.metrics)
+    metrics = Metrics(metrics = args.metrics,
+                      filters = args.filters)
     
     # Start
     analysis = {k: {} for k in corpus.keys()}
@@ -56,7 +66,9 @@ if __name__ == '__main__':
         # Create the Cooccurrence and Filter object
         cooc = Cooccurrences(silent=True)
         filter = Filter(language = lang,
-                        nltk_stopwords = True)
+                        filters = args.filters)
+        
+        shuffler = Shuffler(language=lang)
 
         idx_to_load = np.random.choice(len(corpus[lang]), args.n_articles)
 
@@ -70,6 +82,12 @@ if __name__ == '__main__':
                         )
                 )
         # /!\ text is supposedly HUGE /!\
+        # store its size:
+        print("\t\tTotal text size: %s caracters."%len(cooc.text))
+
+        # Compute POS Sequence and Es sets
+        print("\t\tCompute POS sequence and Es sets...")
+        shuffler.compute_pos_sequence_and_E_sets(cooc.text)
 
         # Compute feed_forward dict
         feed_dict = cooc.compute_feed_dict(bigram_counts=True,
@@ -77,7 +95,7 @@ if __name__ == '__main__':
 
         # Filter out some words
         filter.filter(feed_dict)
-        
+
         # Compute Metrics
         analysis_lang = metrics.compute_metrics(feed_dict=feed_dict)
 
@@ -85,7 +103,6 @@ if __name__ == '__main__':
         print("\t\tDone!")
         
         ## BootStrapping
-        shuffler = Shuffler(language=lang)
 
         # Token Level Shuffling
         print("\n\t### Analyzing token level shuffled corpus ###\n")
@@ -108,13 +125,6 @@ if __name__ == '__main__':
 
         # POS Level Shuffling
         print("\n\t### Analyzing shuffled corpus w.r.t. POS ###\n")
-        # Need to reset text
-        cooc.update_text(
-                text = retrieve_text_from_wikipedia(
-                        wiki_data = corpus[lang], 
-                        idx = idx_to_load 
-                        )
-                )
         for i in range(args.n_shuffle):
             print("\t\tShuffling Dataset..")
             cooc.update_text(
@@ -135,12 +145,20 @@ if __name__ == '__main__':
     ### End of Analysis ##
     print("\n\n############ End of analysis ############\n\n")
 
+    ### Save
+
+    save_analysis(analysis = analysis,
+                  languages = corpus.keys(),
+                  n_articles = args.n_articles,
+                  n_shuffle = args.n_shuffle)
+
     ### Plot
 
-    plotter = Plotter(analysis = analysis,
-                      metrics = args.metrics)
-    plotter.plot()
+    if args.plot:
+        plotter = Plotter(analysis = analysis,
+                          args = args)
+        plotter.plot()
 
-    plotter.set_filtered(True)
-
-    plotter.plot()
+        for filter in args.filters:
+            plotter.set_filtered(filter)
+            plotter.plot()
