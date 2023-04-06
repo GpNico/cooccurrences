@@ -25,8 +25,9 @@ class Plotter:
         self.metrics2plot = from_metrics2compute_to_metrics2plot(self.metrics2compute)
 
         # For naming
-        self.n_articles = args.n_articles
+        self.size = args.size
         self.n_shuffle = args.n_shuffle
+        self.dataset = args.dataset
 
         # Filtered flag (no filter at iniziatilation)
         self.set_filtered('')
@@ -85,6 +86,8 @@ class Plotter:
                         self.analysis[l][cond][self.filtered_flag + metrics[0]]
                         )
                 else:
+                    if cond == 'size':
+                        continue
                     raise Exception("Unexpected condition %s" % cond)
             # Plot
             if 'vanilla' in self.conditions:
@@ -137,6 +140,8 @@ class Plotter:
                                 self.analysis[l][cond][self.filtered_flag + metrics[k]]
                                 )
                         else:
+                            if cond == 'size':
+                                continue
                             raise Exception("Unexpected condition %s" % cond)
                     # Plot
                     if 'vanilla' in self.conditions:
@@ -193,6 +198,8 @@ class Plotter:
                                 self.analysis[l][cond][self.filtered_flag + metrics[k]]
                                 )
                         else:
+                            if cond == 'size':
+                                continue
                             raise Exception("Unexpected condition %s" % cond)
                     # Plot
                     if 'vanilla' in self.conditions:
@@ -233,12 +240,12 @@ class Plotter:
                                              "plots")
         os.makedirs(self.figname_template, exist_ok=True)
         self.figname_template = os.path.join(self.figname_template, 
-                                             "")
+                                             self.dataset)
         
         for lang in self.languages:
-            self.figname_template += '%s_'%lang
-        self.figname_template += 'n_articles_%s_n_shuffle_%s_' % (self.n_articles,
-                                                                  self.n_shuffle)
+            self.figname_template += '_%s'%lang
+        self.figname_template += '_size_%s_n_shuffle_%s_' % (self.size,
+                                                                   self.n_shuffle)
         self.figname_template += "%s.png" # to add metrics name later on  
 
     def _get_languages(self):

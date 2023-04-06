@@ -5,22 +5,102 @@ import pandas as pd
 import numpy as np
 import pickle
 
+from datasets import load_dataset
+import spacy
 
-def retrieve_text_from_wikipedia(wiki_data, idx):
+from config import spacy_lang_names
+
+
+def retrieve_text_from_wikipedia(language: str,
+                                 size: int,
+                                 max_articles: int = 10e6):
     """
+        Compute the texts from wikipedia according to idx.
+        Returns also the idx of each articles in the final 
+        text.
+    
         Args:
-            wiki_data [Hugging Face dataset] it contains several data, here we concatenate
-                                             the texts from n_articles random articles.
-            idx [np.array] array of articles to load.
+            language [str]
+            size [int]
+            max_articles [int] buffer size from which we sample articles
         Returns:
             text [str]
+            articles_idx [dict] keys: num [int]
+                                values: (i, i+l)
+                                i is the idx of the begining of the num^th article
+                                and l is its length.
     """
+    # Retrieve corpus
+    if language == 'en':
+        corpus = load_dataset("wikipedia", "20220301.en")['train']
+    elif language == 'fr':
+        corpus = load_dataset("wikipedia", "20220301.fr")['train']
+    elif language == 'de':
+        corpus = load_dataset("wikipedia", "20220301.de")['train']
+    else:
+        raise Exception(f"Language {language} is not supported for wikipedia.")
+    
+    # Compute idx
+    idx = np.random.choice(len(corpus), max_articles)
+    
     # /!\ For now we load the whole text but might be improved in future versions /!\
     text = ''
-    for i in idx:
-        text += wiki_data[int(i)]['text']
+    articles_idx = {}
+    prv_idx = 0 
+    for num, i in enumerate(idx):
+        _text = corpus[int(i)]['text']
+        text += _text
+        articles_idx[num] = (prv_idx, prv_idx + len(_text))
+        prv_idx += len(_text) # prv_idx is equals to the current size of the text
+        # Check for size limit
+        if prv_idx >= size:
+            break
     text = text.lower()
-    return text
+    return prv_idx, text, articles_idx
+
+def retrieve_text_from_oscar(language: str,
+                             size: int,
+                             max_articles: int = 10e5):
+    """
+        Compute the texts from OSCAR according to idx.
+        Returns also the idx of each articles in the final 
+        text.
+    
+        Args:
+            language [str]
+            size [int]
+            max_articles [int] buffer size from which we sample articles
+        Returns:
+            text [str]
+            articles_idx [dict] keys: num [int]
+                                values: (i, i+l)
+                                i is the idx of the begining of the num^th article
+                                and l is its length.
+    """
+    # Retrieve corpus
+    unshuffled_corpus = load_dataset("oscar-corpus/OSCAR-2201",
+                          use_auth_token="***REMOVED***", # required
+                          language=language, 
+                          streaming=True, # optional
+                          split="train") 
+    corpus = unshuffled_corpus.shuffle(buffer_size=max_articles)#, seed=42)
+                                                              # No seed, also buffer_size big
+    
+    # /!\ For now we load the whole text but might be improved in future versions /!\
+    text = ''
+    articles_idx = {}
+    prv_idx = 0 
+    for num, d in enumerate(corpus):
+        print(f"Num: {num}; Size: {prv_idx}")
+        _text = d['text']
+        text += _text
+        articles_idx[num] = (prv_idx, prv_idx + len(_text))
+        prv_idx = prv_idx + len(_text)
+        # Check for size limit
+        if prv_idx >= size:
+            break
+    text = text.lower()
+    return prv_idx, text, articles_idx
 
 def compute_cooccurrence_matrix(bigram_counts, list_of_words, silent = False):
     """
@@ -102,17 +182,44 @@ def convert_bigrams_to_ids(bigrams):
         new_list.append((id1, id2))
     return new_list
 
-def save_analysis(analysis: dict,
-                  languages: list,
-                  n_articles: int,
-                  n_shuffle: int):
+def load_spacy(language: str):
     """
-        Save the analysis dict in results\\dicts
+    Load spacy according to the specified language.
+    Download is not present.
+
+    Args:
+        language [str] 
+    Returns:
+        nlp [spacy thing]
+    """
+    
+    spacy_name = spacy_lang_names[language]
+   
+    try: 
+        nlp=spacy.load(spacy_name)
+    except:
+        print(f"Installing {spacy_name}...")
+        os.system(f"python -m spacy download {spacy_name}")
+        nlp=spacy.load(spacy_name)
+        
+    nlp.max_length = 100000000
+    
+    return nlp
+
+
+def save_analysis(analysis: dict,
+                  language: str,
+                  size: int,
+                  n_shuffle: int,
+                  dataset: str):
+    """
+        Save the analysis dict in results\\dicts, one dict per language.
         Args:
             analysis [dict] analysis dict
-            languages [list] list of languages
-            n_articles [int] number of articles read
+            languages [str] language to save
+            size [int] number of articles read
             n_shuffle [int] number of random points for bootstrapping
+            dataset [str] name of the dataset used
     
     """
     print("Saving analysis...")
@@ -123,15 +230,135 @@ def save_analysis(analysis: dict,
     filename = os.path.join(filename, "")
     
     # Add params to the name
-    for lang in languages:
-        filename += '%s_'%lang
-    filename += 'n_articles_%s_n_shuffle_%s_' % (n_articles,
-                                                 n_shuffle)
+    filename += '%s_%s_size_%s_n_shuffle_%s' % (dataset,
+                                                      language, 
+                                                      size,
+                                                      n_shuffle)
 
     # Save    
     with open('%s.pkl'%filename, 'wb') as file:
-        pickle.dump(analysis, file)
+        pickle.dump(analysis[language], file)
 
     print("Done!")
 
+def from_dict_to_csv(res_dict: dict = None,
+                     languages: list = None,
+                     size: int = None,
+                     n_shuffle: int = None,
+                     dataset: str = None,
+                     filters: list = None):
+    """
+    Convert analysis dict to friendly reading csv. If no dict is provided 
+    it assumes it has already been saved to pickle and load it from there.
+
+    Args:
+        res_dict (dict, optional): analysis dict. {'en': {'vanilla': {'sparsity_prop_nonzeros': 0.1,
+                                                                      'zipf_fit_coeff': -0.6,
+                                                                      'zipf_fit_R_sq': 0.9,
+                                                                      'filtered_stopwords_sparsity_prop_nonzeros': 0.1,
+                                                                      'filtered_stopwords_zipf_fit_coeff': -0.6,
+                                                                      'filtered_stopwords_zipf_fit_R_sq': 0.9},
+                                                            'token_shuffled_0': {'sparsity_prop_nonzeros': 0.1,
+                                                                                 'zipf_fit_coeff': -0.6,
+                                                                                 'zipf_fit_R_sq': 0.9,
+                                                                                 'filtered_stopwords_sparsity_prop_nonzeros': 0.1,
+                                                                                 'filtered_stopwords_zipf_fit_coeff': -0.6,
+                                                                                 'filtered_stopwords_zipf_fit_R_sq': 0.9},
+                                                            'pos_shuffled_0': {'sparsity_prop_nonzeros': 0.1,
+                                                                               'zipf_fit_coeff': -0.6,
+                                                                               'zipf_fit_R_sq': 0.9,
+                                                                               'filtered_stopwords_sparsity_prop_nonzeros': 0.1,
+                                                                               'filtered_stopwords_zipf_fit_coeff': -0.6,
+                                                                               'filtered_stopwords_zipf_fit_R_sq': 0.9}
+                                                           }
+                                                    }
+        languages (list of str, optional)
+        size (int, optional)
+        n_shuffle (int, optional)
+        dataset [str]
+        filters [list] not optional
+    """
     
+    assert (res_dict is not None) or (languages is not None)
+    assert filters is not None
+    
+    print("Converting Results in .csv")
+    
+    # If no res_dict is provided then load it from pickle
+    if res_dict is None:
+        filename = os.path.join("results", 
+                                "dicts", 
+                                f"{dataset}_lang_size_{size}_n_shuffle_{n_shuffle}")
+        res_dict = {}
+        for lang in languages:
+            with open('%s.pkl'%filename.replace('lang', lang), 'rb') as file:
+                _res = pickle.load(file)
+            res_dict[lang] = _res
+            
+    ## Now let's get down to it ##
+    
+    csv_name = os.path.join("results", 
+                            "csv", 
+                            f"{dataset}_size_{size}_n_shuffle_{n_shuffle}.csv")
+    
+    # First we create data
+    # create columns
+    columns = ['lang', # en, fr, ... 
+                'split', # vanilla, token, pos
+                'num', # num of the split
+                'filter', # all, stopwords, content, function
+                'sparsity', # sparsity_prop_nonzeros
+                'zipf fit', # zipf_fit_R_sq
+                'zipf coeff', # zipf_fit_coeff
+                ] 
+    data = {col: [] for col in columns}
+    for lang in res_dict.keys():
+        for split in res_dict[lang].keys():
+            if split == 'vanilla':
+                split_name = 'vanilla'
+                num = 0
+            elif 'token_shuffled' in split:
+                split_name = 'token'
+                num = int(split[15:])
+            elif "pos_shuffled" in split:
+                split_name = 'pos'
+                num = int(split[13:])
+            else:
+                continue
+                
+            # add all data
+            data['lang'].append(lang)
+            data['split'].append(split_name)
+            data['num'].append(num)
+            data['filter'].append('all')
+            data['sparsity'].append(res_dict[lang][split]['sparsity_prop_nonzeros'])
+            data['zipf fit'].append(res_dict[lang][split]['zipf_fit_R_sq'])
+            data['zipf coeff'].append(res_dict[lang][split]['zipf_fit_coeff'])
+            
+            for filter in filters:
+                data['lang'].append(lang)
+                data['split'].append(split_name)
+                data['num'].append(num)
+                data['filter'].append(filter)
+                data['sparsity'].append(res_dict[lang][split]['filtered_' + filter + '_sparsity_prop_nonzeros'])
+                data['zipf fit'].append(res_dict[lang][split]['filtered_' + filter + '_zipf_fit_R_sq'])
+                data['zipf coeff'].append(res_dict[lang][split]['filtered_' + filter + '_zipf_fit_coeff'])
+                
+    df = pd.DataFrame(data)
+            
+    # First we need to know if we create it from scratch or no
+    if not(os.path.exists(csv_name)):
+        try:
+            # create csv dir
+            os.mkdir(os.path.join("results",
+                                  "csv"))
+        except:
+            pass 
+            # the folder already exists
+        
+        df.to_csv(csv_name, index=False, header=False)
+    else:  
+        # otherwise append 
+        df.to_csv(csv_name, mode='a', index=False, header=False)
+
+    print("Done!")
