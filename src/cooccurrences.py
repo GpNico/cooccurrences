@@ -5,24 +5,28 @@ import collections
 import pandas as pd
 import numpy as np
 
-from nltk.tokenize import RegexpTokenizer, sent_tokenize
-
+from src.utils import load_spacy
 
 class Cooccurrences:
     """
         Wrapper class for co-occurrences computation.
     """
 
-    def __init__(self, silent = False):
+    def __init__(self, language: str, silent: bool = False):
         # Data
         self.text = None
         
         # Form
         self.silent = silent
         
-        # Tokenizers
-        self.word_tokenizer = RegexpTokenizer(r'\w+').tokenize
-        self.sentence_tokenizer = sent_tokenize
+        # Tentative with SpaCy
+        self.language = language
+        self.nlp = load_spacy(language = language) # Candidate for word tokenization
+        # We remove everything in the pipeline
+        # that is not useful, here everything
+        for name, _ in self.nlp.pipeline:
+            self.nlp.remove_pipe(name)
+        self.nlp.add_pipe("sentencizer") # We need sentence tokenization
 
         # Usefull to store
         self.list_of_words = None
@@ -41,57 +45,25 @@ class Cooccurrences:
             # for a shuffled text the list of words doesn't change...
             self.list_of_words = None
 
-    def compute_feed_dict(self,
-                          bigram_counts=True,
-                          list_of_words=True):
+    def compute_feed_dict(self):
         """
             Main method of the class.
             Compute different quantities that will be usefull for metrics computation.
-            Args:
-                bigram_counts [bool]
-                list_of_words [bool]
+            
             Returns:
                 feed_dict [dict]
         """
         feed_dict = {}
 
-        if bigram_counts:
-            print("\t\tComputing bigrams count...")
-            feed_dict['bigrams_count'] = self._compute_bigrams_count()
-        if list_of_words:
-            if self.list_of_words: # Already been computed
-                feed_dict['list_of_words'] = self.list_of_words
-            print("\t\tComputing list of words...")
-            self.list_of_words = self._compute_list_of_words()
-            feed_dict['list_of_words'] = self.list_of_words
+        print("\t\tComputing list of words and bigrams count...")
+        
+        list_of_words, list_of_bigrams = self._compute_list_of_words_and_bigrams()
+        feed_dict['bigrams_count'] = self._count_bigrams(list_of_bigrams)
+        
+        feed_dict['list_of_words'] = list_of_words
 
         return feed_dict
 
-    def _compute_bigrams_count(self):
-        """
-            From an untokenized text,compute its bigrams count.
-            Returns:
-                bigrams_count [collections.Counter] Counter({('a','b'): 5, ('a', 'a'): 2})
-        """
-
-        list_of_bigrams = self._compute_list_of_bigrams(
-                            list_of_lines = self.sentence_tokenizer(self.text),
-                            silent = self.silent
-                            )
-        return self._count_bigrams(list_of_bigrams)
-
-    def _compute_list_of_words(self):
-        """
-            From an untokenized text,compute the list of all its words.
-            Rk: if a word appears more than one time in the text it will
-                still appear only once in the list.
-            Returns:
-                list_of_words [List of str] ex: ['w1',...,'wN'] with i=/=j => wi =/= wj
-        """
-        tokenized_text = self.word_tokenizer(
-                                    self.text.lower()
-                                    )
-        return list(set(tokenized_text))
     
     def _compute_bigrams(self, list_of_words):
         """
@@ -114,23 +86,52 @@ class Cooccurrences:
                     list_of_bigrams.append((w2, w1))
         return list_of_bigrams
 
-    def _compute_list_of_bigrams(self, list_of_lines, silent = False):
+    def _compute_list_of_words_and_bigrams(self, n_subsets = 30):
         """
             Returns list of all bigrams.
-            Args:
-                list_of_lines [List of str] ex: ['a b a', 'a c']
+
             Returns:
+                list_of_words [List of str] ex: ['a', 'b', 'c']
                 list_of_bigrams [List of List of bigrams] ex: [[('a', 'b'), ('a', 'a'), ('a', 'b')],
                                                                [('a', 'c')]]
         """
         list_of_bigrams = []
-        for line in tqdm.tqdm(list_of_lines, disable = silent):
-            list_of_bigrams.append(
-                self._compute_bigrams(
-                    self.word_tokenizer(line)
-                    )
-                )
-        return list_of_bigrams
+        set_of_words = set()
+        
+        ### Not clean but f it I don't have time nor envy to do better
+        
+        # We can't load the full text in SpaCy so let's split it randomly!
+        n_car = len(self.text)
+        subsets = np.arange(0, 
+                             n_car, 
+                             n_car//n_subsets)
+        
+        for k, i1 in enumerate(subsets):
+            try:
+                i2 = subsets[k+1]
+            except:
+                i2 = n_car
+            _text = self.text[i1:i2]
+        
+            list_of_words = [] # buffer that contains sentences
+            for tok in self.nlp(_text):
+                # For list_of_words
+                set_of_words.add(tok.text)
+                
+                # add to list of words
+                list_of_words.append(tok.text)
+                
+                if tok.is_sent_end:
+                    # Here we compute cooc
+                    list_of_bigrams.append(
+                        self._compute_bigrams(
+                            list_of_words #self.word_tokenizer(line)
+                            )
+                        )
+                    # reset sentence buffer
+                    list_of_words = []
+            
+        return list(set_of_words), list_of_bigrams
 
 
     def _count_bigrams(self, list_of_bigrams):

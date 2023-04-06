@@ -2,8 +2,8 @@
 from collections import Counter
 
 import numpy as np
-from nltk.corpus import stopwords
-import spacy
+
+from src.utils import load_spacy
 
 class Filter:
     """
@@ -17,19 +17,13 @@ class Filter:
         
         self.filters = filters
         self.language = language
+           
+        self.nlp = load_spacy(language)
+        #self.nlp.remove_pipe("tok2vec") # so it seems to be usefull for tag_ ... 
+        self.nlp.remove_pipe("ner")
+        self.nlp.remove_pipe("parser")
+        self.stopwords = list(self.nlp.Defaults.stop_words)
 
-        if language == 'en':
-            self.stopwords = stopwords.words('english')
-            self.nlp=spacy.load('en_core_web_sm')
-        elif language == 'fr':
-            self.stopwords = stopwords.words('french')
-            self.nlp=spacy.load('fr_core_news_sm')
-        elif language == 'de':
-            self.stopwords = stopwords.words('german')
-            self.nlp=spacy.load('de_core_news_sm')
-        else:
-            raise Exception("This language %s is not supported." % language)
-            
         self._load_content_logical_pos_lists()
         # This only have to be computd once!
         self.words_pos = None
@@ -180,7 +174,7 @@ class Filter:
             Create lists of content & logical detailled
             POS (.tag_) from SpaCy.
         """
-        if self.language == 'en':
+        if self.language in ['en']:
             self.content_pos_list = ['AFX', 
                                     'JJ', 
                                     'JJR',
@@ -232,9 +226,9 @@ class Filter:
         self.words_pos = {}
         processed = self.nlp(' '.join(list_of_words))
         for tok in processed:
-            if self.language == 'en':
+            if self.language in ['en']:
                 self.words_pos[tok.text] = tok.tag_
-            elif self.language in ['fr', 'de']:
+            else:
                 self.words_pos[tok.text] = tok.pos_
         
         print("\t\t\tDone!")

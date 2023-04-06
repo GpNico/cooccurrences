@@ -1,9 +1,11 @@
 
-from nltk.tokenize import word_tokenize
-import spacy
-
+import numpy as np
+import tqdm
 import random
 
+from nltk.tokenize import word_tokenize
+
+from src.utils import load_spacy
 
 
 class Shuffler:
@@ -14,15 +16,13 @@ class Shuffler:
     def __init__(self, language):
         self.pos_sequence = None
         self.E_sets = None
+        
+        # Language
+        self.language = language
 
         # NLP from SpaCy
-        if language == 'en':
-            self.nlp=spacy.load('en_core_web_sm')
-        elif language == 'fr':
-            self.nlp=spacy.load('fr_core_news_sm')
-        elif language == 'de':
-            self.nlp=spacy.load('de_core_news_sm')
-        self.nlp.max_length = 100000000
+        self.nlp = load_spacy(language)
+        self.nlp.remove_pipe("ner") # it seems to be the only useless thing
 
     def token_shuffle(self, text):
         """
@@ -45,24 +45,50 @@ class Shuffler:
         self._shuffle_E_sets()
         return self._generate_text_from_pos()
     
-    def compute_pos_sequence_and_E_sets(self, text):
+    def compute_pos_sequence_and_E_sets(self, text: str,
+                                              articles_idx: dict,
+                                              n_subsets: int = 10):
         """"
             For a text [str] 'a b c' we note [p_a, p_b, p_c] its POS
             sequence. E(a) = {w|POS(w) = a} so here E_a = [a] if p_a =/= p_b, p_c.
             Args:
                 text [str]
+                articles_idx [dict] keys: num [int]
+                                    values: (i, i+l)
+                                    i is the idx of the begining of the num^th article
+                                    and l is its length.
+                n_subtexts [int] number in which we divide text
         """
         self.pos_sequence = []
         self.E_sets = {}
-        for token in self.nlp(text):
-            # Compute detailled POS and Dependency Tag
-            tags = '{}-{}'.format(token.tag_, token.dep_)
-            self.pos_sequence.append(tags)
-            
-            if tags in self.E_sets.keys():
-                self.E_sets[tags].append(token.text)
-            else:
-                self.E_sets[tags] = [token.text]
+        # Here we can't do this directly because of Segmentation Fault
+        # we need to devide text in subtexts.
+        n_articles = len(articles_idx)
+        articles = np.arange(0, 
+                             n_articles, 
+                             n_articles//n_subsets)
+
+        for k in tqdm.tqdm(range(len(articles))):
+            article = articles[k]
+            i1, _ = articles_idx[article]
+            try:
+                next_article = articles[k+1]
+                i2, _ = articles_idx[next_article]
+            except:
+                # We reach the end of the loop
+                next_article = n_articles - 1
+                _, i2 = articles_idx[next_article]
+
+            _text = text[i1:i2]
+            for token in self.nlp(_text):
+                # Compute detailled POS and Dependency Tag
+                tags = '{}-{}'.format(token.tag_, token.dep_)
+                self.pos_sequence.append(tags)
+                
+                if tags in self.E_sets.keys():
+                    self.E_sets[tags].append(token.text)
+                else:
+                    self.E_sets[tags] = [token.text]
 
     def _shuffle_E_sets(self):
         """
