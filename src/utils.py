@@ -91,7 +91,7 @@ def retrieve_text_from_oscar(language: str,
     articles_idx = {}
     prv_idx = 0 
     for num, d in enumerate(corpus):
-        print(f"Num: {num}; Size: {prv_idx}")
+        #print(f"Num: {num}; Size: {prv_idx}")
         _text = d['text']
         text += _text
         articles_idx[num] = (prv_idx, prv_idx + len(_text))

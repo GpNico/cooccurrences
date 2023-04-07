@@ -93,7 +93,7 @@ if __name__ == '__main__':
                                     size = args.size
                                     )
         elif args.dataset == "oscar":
-            text_size, articles_idx = retrieve_text_from_oscar(
+            text_size, text, articles_idx = retrieve_text_from_oscar(
                                     language = lang,
                                     size = args.size
                                     )
