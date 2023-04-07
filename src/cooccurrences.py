@@ -107,6 +107,7 @@ class Cooccurrences:
                              n_car//n_subsets)
         
         for k, i1 in enumerate(subsets):
+            
             try:
                 i2 = subsets[k+1]
             except:
@@ -114,6 +115,7 @@ class Cooccurrences:
             _text = self.text[i1:i2]
         
             list_of_words = [] # buffer that contains sentences
+            print(f"iter: {k}, i1,i2: ({i1},{i2})")
             for tok in self.nlp(_text):
                 # For list_of_words
                 set_of_words.add(tok.text)
@@ -121,7 +123,10 @@ class Cooccurrences:
                 # add to list of words
                 list_of_words.append(tok.text)
                 
+                print(f"size sentence: {len(list_of_words)}, size list of words: {len(set_of_words)}")
+                
                 if tok.is_sent_end:
+                    print("################ END OF SENTENCE ################")
                     # Here we compute cooc
                     list_of_bigrams.append(
                         self._compute_bigrams(

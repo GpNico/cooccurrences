@@ -6,7 +6,7 @@ languages2compute = {}
 # Catalan 
 languages2compute['ca'] = False
 # Chinese
-languages2compute['zh'] = False # symbols
+languages2compute['zh'] = True # symbols
 # Croatian
 languages2compute['hr'] = False
 # Danish 
