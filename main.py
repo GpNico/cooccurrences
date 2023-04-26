@@ -114,7 +114,7 @@ if __name__ == '__main__':
         print("\t\tCompute POS sequence and Es sets...")
         shuffler.compute_pos_sequence_and_E_sets(cooc.text,
                                                  articles_idx = articles_idx,
-                                                 n_subsets = 20)
+                                                 n_subsets = 50)
 
         # Compute feed_forward dict
         feed_dict = cooc.compute_feed_dict()

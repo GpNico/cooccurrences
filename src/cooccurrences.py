@@ -86,9 +86,13 @@ class Cooccurrences:
                     list_of_bigrams.append((w2, w1))
         return list_of_bigrams
 
-    def _compute_list_of_words_and_bigrams(self, n_subsets = 30):
+    def _compute_list_of_words_and_bigrams(self, n_subsets = 30, max_sentence_size = 100):
         """
             Returns list of all bigrams.
+            
+            Args:
+                n_subsets [int] divide text in subtexts to process it (memory issues)
+                max_sentence_size [int] because of chinese!
 
             Returns:
                 list_of_words [List of str] ex: ['a', 'b', 'c']
@@ -115,7 +119,7 @@ class Cooccurrences:
             _text = self.text[i1:i2]
         
             list_of_words = [] # buffer that contains sentences
-            print(f"iter: {k}, i1,i2: ({i1},{i2})")
+            
             for tok in self.nlp(_text):
                 # For list_of_words
                 set_of_words.add(tok.text)
@@ -123,10 +127,10 @@ class Cooccurrences:
                 # add to list of words
                 list_of_words.append(tok.text)
                 
-                print(f"size sentence: {len(list_of_words)}, size list of words: {len(set_of_words)}")
+                #print(f"size sentence: {len(list_of_words)}, size list of words: {len(set_of_words)}")
                 
-                if tok.is_sent_end:
-                    print("################ END OF SENTENCE ################")
+                if tok.is_sent_end or len(list_of_words) >= max_sentence_size:
+                    #print("################ END OF SENTENCE ################")
                     # Here we compute cooc
                     list_of_bigrams.append(
                         self._compute_bigrams(

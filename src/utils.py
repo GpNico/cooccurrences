@@ -60,7 +60,7 @@ def retrieve_text_from_wikipedia(language: str,
 
 def retrieve_text_from_oscar(language: str,
                              size: int,
-                             max_articles: int = 10e5):
+                             max_articles: int = 20000):
     """
         Compute the texts from OSCAR according to idx.
         Returns also the idx of each articles in the final 
