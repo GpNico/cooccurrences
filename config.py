@@ -4,51 +4,51 @@
 
 languages2compute = {}
 # Catalan 
-languages2compute['ca'] = False
+languages2compute['ca'] = False 
 # Chinese
-languages2compute['zh'] = True # symbols
+languages2compute['zh'] = False # TBD
 # Croatian
-languages2compute['hr'] = False
+languages2compute['hr'] = False # Not in SpaCy
 # Danish 
 languages2compute['da'] = False
 # Dutch
 languages2compute['nl'] = False
 # English
-languages2compute['en'] = True
+languages2compute['en'] = False
 # Finnish
 languages2compute['fi'] = False
 # French
-languages2compute['fr'] = True
+languages2compute['fr'] = False
 # German
-languages2compute['de'] = True
+languages2compute['de'] = False
 # Greek
-languages2compute['el'] = False # symbols
+languages2compute['el'] = False 
 # Italian
 languages2compute['it'] = False
 # Japanese
-languages2compute['ja'] = False # symbols
+languages2compute['ja'] = False # TBD
 # Korean
-languages2compute['ko'] = False # symbols
+languages2compute['ko'] = False # TBD
 # Lithuanian
-languages2compute['lt'] = False # weird accents
+languages2compute['lt'] = False 
 # Macedonian
-languages2compute['mk'] = False # symbols
+languages2compute['mk'] = False 
 # Norwegian Bokmål
-languages2compute['nb'] = False # Not in OSCAR, so keep it False
+languages2compute['nb'] = False # Not in OSCAR
 # Polish
-languages2compute['pl'] = False # weird accents
+languages2compute['pl'] = True 
 # Portuguese
-languages2compute['pt'] = False
+languages2compute['pt'] = True
 # Romanian
-languages2compute['ro'] = False # weird accent
+languages2compute['ro'] = True 
 # Russian
-languages2compute['ru'] = False # symbols
+languages2compute['ru'] = True 
 # Spanish
-languages2compute['es'] = False
+languages2compute['es'] = True
 # Swedish
-languages2compute['sv'] = False
+languages2compute['sv'] = True
 # Ukrainian
-languages2compute['uk'] = False # symbols
+languages2compute['uk'] = False # Not in SpaCy
 
 
 ### SpaCy ###
