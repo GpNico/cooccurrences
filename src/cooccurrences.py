@@ -4,7 +4,7 @@ import itertools
 from collections import Counter
 import pandas as pd
 import numpy as np
-
+import string
 from typing import Dict, Tuple, List, Union
 
 from src.utils import load_spacy
@@ -91,8 +91,12 @@ class Cooccurrences:
         list_of_bigrams = []
         for k in range(len(list_of_words)):
             w1 = list_of_words[k]
+            if w1 in string.punctuation or w1 in ['\n', '\t']:
+                continue
             for l in range(k+1, len(list_of_words)):
                 w2 = list_of_words[l]
+                if w2 in string.punctuation or w2 in ['\n', '\t']:
+                    continue
                 if self.ordered:
                     list_of_bigrams.append((w1, w2)) # Here whatever the alphabetic order we store the bigrams as it was in the text
                 else:
