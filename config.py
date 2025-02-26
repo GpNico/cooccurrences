@@ -14,15 +14,15 @@ languages2compute['da'] = False
 # Dutch
 languages2compute['nl'] = False
 # English
-languages2compute['en'] = False
+languages2compute['en'] = True
 # Finnish
 languages2compute['fi'] = False
 # French
-languages2compute['fr'] = False
+languages2compute['fr'] = True
 # German
 languages2compute['de'] = False
 # Greek
-languages2compute['el'] = False 
+languages2compute['el'] = False
 # Italian
 languages2compute['it'] = False
 # Japanese
@@ -30,23 +30,23 @@ languages2compute['ja'] = False # TBD
 # Korean
 languages2compute['ko'] = False # TBD
 # Lithuanian
-languages2compute['lt'] = False 
+languages2compute['lt'] = False
 # Macedonian
-languages2compute['mk'] = False 
+languages2compute['mk'] = False
 # Norwegian Bokmål
 languages2compute['nb'] = False # Not in OSCAR
 # Polish
-languages2compute['pl'] = True 
+languages2compute['pl'] = False
 # Portuguese
-languages2compute['pt'] = True
+languages2compute['pt'] = False
 # Romanian
-languages2compute['ro'] = True 
+languages2compute['ro'] = False
 # Russian
-languages2compute['ru'] = True 
+languages2compute['ru'] = False
 # Spanish
-languages2compute['es'] = True
+languages2compute['es'] = False
 # Swedish
-languages2compute['sv'] = True
+languages2compute['sv'] = False
 # Ukrainian
 languages2compute['uk'] = False # Not in SpaCy
 

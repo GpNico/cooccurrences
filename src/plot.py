@@ -1,6 +1,7 @@
 
 import os
 import matplotlib.pyplot as plt
+from matplotlib import rc
 import numpy as np
 
 from src.utils import from_metrics2compute_to_metrics2plot
@@ -11,7 +12,7 @@ class Plotter:
         Wrapper Class to plot different metrics.
     """
 
-    def __init__(self, analysis, args):
+    def __init__(self, analysis, args, show: bool = False):
         """
             Args:
                 analysis [dict] keys [str] language
@@ -28,6 +29,8 @@ class Plotter:
         self.size = args.size
         self.n_shuffle = args.n_shuffle
         self.dataset = args.dataset
+        self.split = args.split
+        self.window_size = args.window_size
 
         # Filtered flag (no filter at iniziatilation)
         self.set_filtered('')
@@ -41,10 +44,18 @@ class Plotter:
 
         # Plot params
         self.n_plots = len(self.metrics2compute)
-        self.plot_sizes = (5,5)
-        self.color_vanilla = 'royalblue'
-        self.color_token_shuffled = 'darkmagenta'
-        self.color_pos_shuffled = 'red'
+        self.plot_sizes = (20,5)
+        self.color_vanilla = 'cornflowerblue' #'royalblue'
+        self.color_token_shuffled = 'mediumaquamarine' #'darkmagenta'
+        self.color_pos_shuffled = 'lightcoral' #'red'
+        self.show = show
+        self.alpha = .5
+        self.s = 120
+        
+        font = {#'family' : 'normal',
+                #'weight' : 'bold',
+                'size'   : 22}
+        rc('font', **font)
         
     def plot(self):
         """
@@ -92,33 +103,41 @@ class Plotter:
             # Plot
             if 'vanilla' in self.conditions:
                 x_vanilla = l_idx*np.ones(len(vanilla_data)) + self.bar_offsets[0]
-                ax.scatter(x_vanilla, vanilla_data, color = self.color_vanilla)
-                ax.bar(x_vanilla, vanilla_data, width = self.bar_width, color = self.color_vanilla, alpha = 0.5)
+                
+                ax.bar(x_vanilla, vanilla_data, width = self.bar_width, color = self.color_vanilla, alpha = self.alpha, edgecolor = 'black')
+                ax.scatter(x_vanilla, vanilla_data, color = self.color_vanilla, marker = '+', s = self.s)
             if 'token_shuffled_0' in self.conditions:
                 x_token_shuffled = l_idx*np.ones(len(token_shuffled_data)) + self.bar_offsets[1]
                 #ax.scatter(x_token_shuffled[0], np.mean(token_shuffled_data), color = self.color_token_shuffled)
-                ax.scatter(x_token_shuffled, token_shuffled_data, color = self.color_token_shuffled)
-                ax.bar(x_token_shuffled[0], np.mean(token_shuffled_data), width = self.bar_width, color = self.color_token_shuffled, alpha = 0.5)
+                
+                ax.bar(x_token_shuffled[0], np.mean(token_shuffled_data), width = self.bar_width, color = self.color_token_shuffled, alpha = self.alpha, edgecolor = 'black')
+                ax.scatter(x_token_shuffled, token_shuffled_data, color = self.color_token_shuffled, marker = '+', s = self.s)
             if 'pos_shuffled_0' in self.conditions:
                 x_pos_shuffled = l_idx*np.ones(len(pos_shuffled_data)) + self.bar_offsets[2]
-                ax.scatter(x_pos_shuffled, pos_shuffled_data, color = self.color_pos_shuffled)
-                ax.bar(x_pos_shuffled[0], np.mean(pos_shuffled_data), width = self.bar_width, color = self.color_pos_shuffled, alpha = 0.5)
+                
+                ax.bar(x_pos_shuffled[0], np.mean(pos_shuffled_data), width = self.bar_width, color = self.color_pos_shuffled, alpha = self.alpha, edgecolor = 'black')
+                ax.scatter(x_pos_shuffled, pos_shuffled_data, color = self.color_pos_shuffled, marker = '+', s = self.s)
             
-        ax.set_title('Sparsity')
+        #ax.set_title('Sparsity')
         ax.set_xticks(np.arange(len(self.languages)) + 0.5)
-        ax.set_xticklabels(self.languages)
+        ax.set_xticklabels(self.languages, weight = 'bold')
         ax.set_axisbelow(True)
-        ax.legend(self.legend, loc = 'lower right')
-        ax.grid()
+        ax.legend(self.legend, loc = 'center', bbox_to_anchor=(0.5, 1.05), ncols = 3, frameon=False)
+        #ax.grid()
+        
+        plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     
-        plt.savefig(self.figname_template % (self.filtered_flag + 'sparsity'))
+        plt.savefig(self.figname_template % (self.filtered_flag + 'sparsity'), dpi=300)
+        
+        if self.show:
+            plt.show()
 
     def _plot_zipf_fit(self):
             metrics = self.metrics2plot['zipf_fit']
             assert len(metrics) == 2
 
-            _, axs = plt.subplots(1, 2, figsize = (2*self.plot_sizes[0],
-                                                   self.plot_sizes[1]))
+            _, axs = plt.subplots(2, 1, figsize = (1*self.plot_sizes[0],
+                                                   2*self.plot_sizes[1]))
 
             for k in range(len(metrics)):
                 for l_idx, l in enumerate(self.languages):
@@ -146,29 +165,39 @@ class Plotter:
                     # Plot
                     if 'vanilla' in self.conditions:
                         x_vanilla = l_idx*np.ones(len(vanilla_data)) + self.bar_offsets[0]
-                        axs[k].scatter(x_vanilla, vanilla_data, color = self.color_vanilla)
-                        axs[k].bar(x_vanilla, vanilla_data, width = self.bar_width, color = self.color_vanilla, alpha = 0.5)
+                        
+                        axs[k].bar(x_vanilla, vanilla_data, width = self.bar_width, color = self.color_vanilla, alpha = self.alpha, edgecolor = 'black')
+                        axs[k].scatter(x_vanilla, vanilla_data, color = self.color_vanilla, marker = '+', s = self.s)
                     if 'token_shuffled_0' in self.conditions:
                         x_token_shuffled = l_idx*np.ones(len(token_shuffled_data)) + self.bar_offsets[1]
                         #ax.scatter(x_token_shuffled[0], np.mean(token_shuffled_data), color = self.color_token_shuffled)
-                        axs[k].scatter(x_token_shuffled, token_shuffled_data, color = self.color_token_shuffled)
-                        axs[k].bar(x_token_shuffled[0], np.mean(token_shuffled_data), width = self.bar_width, color = self.color_token_shuffled, alpha = 0.5)
+                        
+                        axs[k].bar(x_token_shuffled[0], np.mean(token_shuffled_data), width = self.bar_width, color = self.color_token_shuffled, alpha = self.alpha, edgecolor = 'black')
+                        axs[k].scatter(x_token_shuffled, token_shuffled_data, color = self.color_token_shuffled, marker = '+', s = self.s)
                     if 'pos_shuffled_0' in self.conditions:
                         x_pos_shuffled = l_idx*np.ones(len(pos_shuffled_data)) + self.bar_offsets[2]
-                        axs[k].scatter(x_pos_shuffled, pos_shuffled_data, color = self.color_pos_shuffled)
-                        axs[k].bar(x_pos_shuffled[0], np.mean(pos_shuffled_data), width = self.bar_width, color = self.color_pos_shuffled, alpha = 0.5)
+                        
+                        axs[k].bar(x_pos_shuffled[0], np.mean(pos_shuffled_data), width = self.bar_width, color = self.color_pos_shuffled, alpha = self.alpha, edgecolor = 'black')
+                        axs[k].scatter(x_pos_shuffled, pos_shuffled_data, color = self.color_pos_shuffled, marker = '+', s = self.s)
 
                 if metrics[k] == 'zipf_fit_R_sq':   
-                    axs[k].set_title('Zipf Fit: R^2')
+                    pass
+                    #axs[k].set_title('Zipf Fit: R^2')
                 elif metrics[k] == 'zipf_fit_coeff':
-                    axs[k].set_title('Zipf Fit: Coeff.')
+                    pass
+                    #axs[k].set_title('Zipf Fit: Coeff.')
                 axs[k].set_xticks(np.arange(len(self.languages)) + 0.5)
-                axs[k].set_xticklabels(self.languages)
+                axs[k].set_xticklabels(self.languages, weight = 'bold')
                 axs[k].set_axisbelow(True)
-                axs[k].legend(self.legend, loc = 'lower right')
-                axs[k].grid()
+            
+            axs[0].legend(self.legend, loc = 'center', bbox_to_anchor=(0.5, 1.05), ncols = 3, frameon=False)
+            #axs[k].grid()
+            plt.tight_layout()
         
-            plt.savefig(self.figname_template % (self.filtered_flag + 'zipf_fit'))
+            plt.savefig(self.figname_template % (self.filtered_flag + 'zipf_fit'), dpi=300)
+            
+            if self.show:
+                plt.show()
 
 
     def _plot_clustering(self):
@@ -205,16 +234,16 @@ class Plotter:
                     if 'vanilla' in self.conditions:
                         x_vanilla = l_idx*np.ones(len(vanilla_data)) + self.bar_offsets[0]
                         axs[k].scatter(x_vanilla, vanilla_data, color = self.color_vanilla)
-                        axs[k].bar(x_vanilla, vanilla_data, width = self.bar_width, color = self.color_vanilla, alpha = 0.5)
+                        axs[k].bar(x_vanilla, vanilla_data, width = self.bar_width, color = self.color_vanilla, alpha = 0.5, edgecolor = 'black')
                     if 'token_shuffled_0' in self.conditions:
                         x_token_shuffled = l_idx*np.ones(len(token_shuffled_data)) + self.bar_offsets[1]
                         #ax.scatter(x_token_shuffled[0], np.mean(token_shuffled_data), color = self.color_token_shuffled)
                         axs[k].scatter(x_token_shuffled, token_shuffled_data, color = self.color_token_shuffled)
-                        axs[k].bar(x_token_shuffled[0], np.mean(token_shuffled_data), width = self.bar_width, color = self.color_token_shuffled, alpha = 0.5)
+                        axs[k].bar(x_token_shuffled[0], np.mean(token_shuffled_data), width = self.bar_width, color = self.color_token_shuffled, alpha = 0.5, edgecolor = 'black')
                     if 'pos_shuffled_0' in self.conditions:
                         x_pos_shuffled = l_idx*np.ones(len(pos_shuffled_data)) + self.bar_offsets[2]
                         axs[k].scatter(x_pos_shuffled, pos_shuffled_data, color = self.color_pos_shuffled)
-                        axs[k].bar(x_pos_shuffled[0], np.mean(pos_shuffled_data), width = self.bar_width, color = self.color_pos_shuffled, alpha = 0.5)
+                        axs[k].bar(x_pos_shuffled[0], np.mean(pos_shuffled_data), width = self.bar_width, color = self.color_pos_shuffled, alpha = 0.5, edgecolor = 'black')
 
                 if metrics[k] == 'clustering_average':   
                     axs[k].set_title('Clustering: Average')
@@ -244,8 +273,13 @@ class Plotter:
         
         for lang in self.languages:
             self.figname_template += '_%s'%lang
-        self.figname_template += '_size_%s_n_shuffle_%s_' % (self.size,
-                                                                   self.n_shuffle)
+        if self.split == 'sentence':
+            self.figname_template += '_size_%s_n_shuffle_%s_sentence_' % (self.size,
+                                                                          self.n_shuffle)
+        elif self.split == 'window':
+            self.figname_template += '_size_%s_n_shuffle_%s_window_%s_' % (self.size,
+                                                                           self.n_shuffle,
+                                                                           self.window_size)
         self.figname_template += "%s.png" # to add metrics name later on  
 
     def _get_languages(self):
@@ -267,10 +301,10 @@ class Plotter:
             self.legend.append('vanilla')
             self.n_cond += 1
         if 'token_shuffled_0' in self.conditions:
-            self.legend.append('token shuffled')
+            self.legend.append('shuffled')
             self.n_cond += 1
         if 'pos_shuffled_0' in self.conditions:
-            self.legend.append('POS shuffled')
+            self.legend.append('POS-preserved')
             self.n_cond += 1
 
     def _get_bar_offsets(self):

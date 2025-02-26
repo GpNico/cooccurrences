@@ -206,12 +206,49 @@ def load_spacy(language: str):
     
     return nlp
 
+def get_save_folder_name(
+                  language: str,
+                  size: int,
+                  n_shuffle: int,
+                  dataset: str,
+                  split: str,
+                  ordered: bool,
+                  window_size: int):
+
+    # Boring stuff
+    filename = ""
+    
+    if language is None:
+        # Add params to the name
+        if split == 'sentence':
+            filename += f'{dataset}_size_{int(size)}_n_shuffle_{n_shuffle}_sentence'
+        elif split == 'window':
+            filename += f'{dataset}_size_{size}_n_shuffle_{n_shuffle}_window_{window_size}'
+        else:
+            raise Exception(f"Split {split} doesn't exist.")
+    else:
+        # Add params to the name
+        if split == 'sentence':
+            filename += f'{dataset}_{language}_size_{size}_n_shuffle_{n_shuffle}_sentence'
+        elif split == 'window':
+            filename += f'{dataset}_{language}_size_{size}_n_shuffle_{n_shuffle}_window_{window_size}'
+        else:
+            raise Exception(f"Split {split} doesn't exist.")
+        
+    if ordered:
+        filename += "_ordered"
+    
+    return filename
+
 
 def save_analysis(analysis: dict,
                   language: str,
                   size: int,
                   n_shuffle: int,
-                  dataset: str):
+                  dataset: str,
+                  split: str,
+                  ordered: bool,
+                  window_size: int):
     """
         Save the analysis dict in results\\dicts, one dict per language.
         Args:
@@ -223,17 +260,12 @@ def save_analysis(analysis: dict,
     
     """
     print("Saving analysis...")
-
-    # Boring stuff
+    
     filename = os.path.join("results", "dicts")
     os.makedirs(filename, exist_ok=True)
     filename = os.path.join(filename, "")
-    
-    # Add params to the name
-    filename += '%s_%s_size_%s_n_shuffle_%s' % (dataset,
-                                                      language, 
-                                                      size,
-                                                      n_shuffle)
+
+    filename += get_save_folder_name(language, size, n_shuffle, dataset, split, ordered, window_size)
 
     # Save    
     with open('%s.pkl'%filename, 'wb') as file:
@@ -246,7 +278,10 @@ def from_dict_to_csv(res_dict: dict = None,
                      size: int = None,
                      n_shuffle: int = None,
                      dataset: str = None,
-                     filters: list = None):
+                     filters: list = None,
+                     split: str = 'sentence',
+                     ordered: bool = False,
+                     window_size: int = 5):
     """
     Convert analysis dict to friendly reading csv. If no dict is provided 
     it assumes it has already been saved to pickle and load it from there.
@@ -285,10 +320,20 @@ def from_dict_to_csv(res_dict: dict = None,
     print("Converting Results in .csv")
     
     # If no res_dict is provided then load it from pickle
+    if ordered:
+        ordered_str = "_ordered"
+    else:
+        ""
+    
     if res_dict is None:
-        filename = os.path.join("results", 
-                                "dicts", 
-                                f"{dataset}_lang_size_{size}_n_shuffle_{n_shuffle}")
+        if split == 'sentence':
+            filename = os.path.join("results", 
+                                    "dicts", 
+                                    f"{dataset}_lang_size_{size}_n_shuffle_{n_shuffle}_sentence{ordered_str}")
+        elif split == 'window':
+            filename = os.path.join("results", 
+                                    "dicts", 
+                                    f"{dataset}_lang_size_{size}_n_shuffle_{n_shuffle}_window_{window_size}{ordered_str}")
         res_dict = {}
         for lang in languages:
             with open('%s.pkl'%filename.replace('lang', lang), 'rb') as file:
@@ -297,9 +342,14 @@ def from_dict_to_csv(res_dict: dict = None,
             
     ## Now let's get down to it ##
     
-    csv_name = os.path.join("results", 
-                            "csv", 
-                            f"{dataset}_size_{size}_n_shuffle_{n_shuffle}.csv")
+    if split == 'sentence':
+        csv_name = os.path.join("results", 
+                                "csv", 
+                                f"{dataset}_size_{size}_n_shuffle_{n_shuffle}_sentence{ordered_str}.csv")
+    if split == 'window':
+        csv_name = os.path.join("results", 
+                                "csv", 
+                                f"{dataset}_size_{size}_n_shuffle_{n_shuffle}_window_{window_size}{ordered_str}.csv")
     
     # First we create data
     # create columns
@@ -313,16 +363,16 @@ def from_dict_to_csv(res_dict: dict = None,
                 ] 
     data = {col: [] for col in columns}
     for lang in res_dict.keys():
-        for split in res_dict[lang].keys():
-            if split == 'vanilla':
+        for sp in res_dict[lang].keys():
+            if sp == 'vanilla':
                 split_name = 'vanilla'
                 num = 0
-            elif 'token_shuffled' in split:
+            elif 'token_shuffled' in sp:
                 split_name = 'token'
-                num = int(split[15:])
-            elif "pos_shuffled" in split:
+                num = int(sp[15:])
+            elif "pos_shuffled" in sp:
                 split_name = 'pos'
-                num = int(split[13:])
+                num = int(sp[13:])
             else:
                 continue
                 
@@ -331,18 +381,18 @@ def from_dict_to_csv(res_dict: dict = None,
             data['split'].append(split_name)
             data['num'].append(num)
             data['filter'].append('all')
-            data['sparsity'].append(res_dict[lang][split]['sparsity_prop_nonzeros'])
-            data['zipf fit'].append(res_dict[lang][split]['zipf_fit_R_sq'])
-            data['zipf coeff'].append(res_dict[lang][split]['zipf_fit_coeff'])
+            data['sparsity'].append(res_dict[lang][sp]['sparsity_prop_nonzeros'])
+            data['zipf fit'].append(res_dict[lang][sp]['zipf_fit_R_sq'])
+            data['zipf coeff'].append(res_dict[lang][sp]['zipf_fit_coeff'])
             
             for filter in filters:
                 data['lang'].append(lang)
                 data['split'].append(split_name)
                 data['num'].append(num)
                 data['filter'].append(filter)
-                data['sparsity'].append(res_dict[lang][split]['filtered_' + filter + '_sparsity_prop_nonzeros'])
-                data['zipf fit'].append(res_dict[lang][split]['filtered_' + filter + '_zipf_fit_R_sq'])
-                data['zipf coeff'].append(res_dict[lang][split]['filtered_' + filter + '_zipf_fit_coeff'])
+                data['sparsity'].append(res_dict[lang][sp]['filtered_' + filter + '_sparsity_prop_nonzeros'])
+                data['zipf fit'].append(res_dict[lang][sp]['filtered_' + filter + '_zipf_fit_R_sq'])
+                data['zipf coeff'].append(res_dict[lang][sp]['filtered_' + filter + '_zipf_fit_coeff'])
                 
     df = pd.DataFrame(data)
             

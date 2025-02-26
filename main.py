@@ -2,8 +2,10 @@
 import argparse
 import tqdm
 import numpy as np
+import pickle
+import os
 
-from src.utils import retrieve_text_from_wikipedia, retrieve_text_from_oscar, save_analysis, from_dict_to_csv
+from src.utils import retrieve_text_from_wikipedia, retrieve_text_from_oscar, save_analysis, from_dict_to_csv, get_save_folder_name
 from src.cooccurrences import Cooccurrences
 from src.metrics import Metrics
 from src.shuffle import Shuffler
@@ -15,15 +17,30 @@ from config import languages2compute
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter, allow_abbrev=False)
 parser.add_argument('--size',
                     type=int,
-                    default=10e6,
+                    default=1e6, #5*1e7
                     dest='size',
                     help='Number of caracters that constitute the dataset.')
 parser.add_argument('--n_shuffle',
                     type=int,
-                    default=10,
+                    default=2, #10
                     dest='n_shuffle',
                     help='Number of shuffled corpus will be analyzed.')
-parser.add_argument('--metrics',
+parser.add_argument('--split',
+                    type=str,
+                    default='sentence', # Should try both
+                    dest='split',
+                    help='Do we compute cooccurrences based on a sliding window or sentences.')
+parser.add_argument('--ordered', # Shoulc Always be True as we can always symmetrize a matrix
+                    type=bool,
+                    default=True,
+                    dest="ordered",
+                    help='Should the pairs be ordered ie "a b" has only (a,b) as cooccurrence not (b, a).')
+parser.add_argument('--window_size',
+                    type=int,
+                    default=5,
+                    dest='window_size',
+                    help='Size of the slidding window.')
+parser.add_argument('--metrics', # We will compute it after so -> "None"
                     type=str,
                     default='sparsity-zipf_fit',
                     dest='metrics',
@@ -38,10 +55,13 @@ parser.add_argument('--dataset',
                     default='oscar',
                     dest='dataset',
                     help='We have wikipedia with only en, fr, de. And we have oscar with all spacy languages.')
-parser.add_argument('--plot',
+parser.add_argument("--analysis", # No Need 
+                    action = 'store_true',
+                    help = "If True then metrics & filter are computed.")
+parser.add_argument('--plot', # No need
                     action='store_true',
                     help='Plot the results.')
-parser.add_argument('--csv',
+parser.add_argument('--csv', # No need
                     action='store_true',
                     help='Convert dict results into csv')
 args = parser.parse_args()
@@ -52,6 +72,23 @@ args.filters = args.filters.split('-')
 
 if __name__ == '__main__':
     
+    # Raws folder
+    raws_path = get_save_folder_name(
+                      language=None,
+                      size = args.size,
+                      n_shuffle = args.n_shuffle,
+                      dataset = args.dataset,
+                      split = args.split,
+                      ordered = args.ordered,
+                      window_size = args.window_size)
+
+    raws_path = os.path.join('results', 'raws', raws_path)
+    
+    os.makedirs(
+        raws_path,
+        exist_ok = True
+    )
+    
     languages = [lang for lang, b in languages2compute.items() if b]
     
     ## Only convert the results to csv
@@ -60,10 +97,13 @@ if __name__ == '__main__':
                          size = args.size,
                          n_shuffle = args.n_shuffle,
                          dataset = args.dataset,
-                         filters = args.filters)
+                         filters = args.filters,
+                         split = args.split,
+                         ordered = args.ordered,
+                         window_size = args.window_size)
         exit(0)
     
-    ## Analysis
+    ####### Analysis #######
     print("\n\n############ Beginning of analysis ############\n")
     
     # Create Metrics object
@@ -71,13 +111,17 @@ if __name__ == '__main__':
                       filters = args.filters)
     
     # Start
-    analysis = {k: {} for k in languages}
+    if args.analysis:
+        analysis = {k: {} for k in languages}
 
     for lang in languages:
         print("\n\tNow analyzing %s..\n" % lang)
 
         # Create the Cooccurrence and Filter object
         cooc = Cooccurrences(language = lang,
+                             split = args.split,
+                             ordered = args.ordered,
+                             window_size = args.window_size,
                              silent=True)
         filter = Filter(language = lang,
                         filters = args.filters)
@@ -108,7 +152,8 @@ if __name__ == '__main__':
 
         # store its size:
         print("\t\tTotal text size: %s caracters."%text_size)
-        analysis[lang]['size'] = text_size
+        if args.analysis:
+            analysis[lang]['size'] = text_size
 
         # Compute POS Sequence and Es sets
         print("\t\tCompute POS sequence and Es sets...")
@@ -116,21 +161,30 @@ if __name__ == '__main__':
                                                  articles_idx = articles_idx,
                                                  n_subsets = 50)
 
+        ### Vanilla ###
+
         # Compute feed_forward dict
         feed_dict = cooc.compute_feed_dict()
-
-        # Filter out some words
-        filter.filter(feed_dict)
-
-        # Compute Metrics
-        analysis_lang = metrics.compute_metrics(feed_dict=feed_dict)
-
-        analysis[lang]['vanilla'] = analysis_lang
-        print("\t\tDone!")
         
-        ## BootStrapping
+        # Here save Feed-Dict
+        with open(os.path.join(raws_path, f'{lang}_vanilla.pickle'), 'wb') as handle:
+            pickle.dump(feed_dict, 
+                        handle, 
+                        protocol=pickle.HIGHEST_PROTOCOL)
 
-        # Token Level Shuffling
+        if args.analysis:
+            # Filter out some words
+            filter.filter(feed_dict)
+
+            # Compute Metrics
+            analysis_lang = metrics.compute_metrics(feed_dict=feed_dict)
+
+            analysis[lang]['vanilla'] = analysis_lang
+            print("\t\tDone!")
+        
+        ##### BootStrapping #####
+
+        ## Token Level Shuffling ##
         print("\n\t### Analyzing token level shuffled corpus ###\n")
         for i in range(args.n_shuffle):
             print("\t\tShuffling Dataset..")
@@ -142,13 +196,20 @@ if __name__ == '__main__':
             # Compute feed_forward dict
             feed_dict = cooc.compute_feed_dict()
             
-            filter.filter(feed_dict)
+            with open(os.path.join(raws_path, f'{lang}_token_{i}.pickle'), 'wb') as handle:
+                pickle.dump(feed_dict, 
+                            handle, 
+                            protocol=pickle.HIGHEST_PROTOCOL)
+            
+            
+            if args.analysis:
+                filter.filter(feed_dict)
 
-            analysis_lang = metrics.compute_metrics(feed_dict=feed_dict)
+                analysis_lang = metrics.compute_metrics(feed_dict=feed_dict)
 
-            analysis[lang]['token_shuffled_%s' % i] = analysis_lang
+                analysis[lang]['token_shuffled_%s' % i] = analysis_lang
 
-        # POS Level Shuffling
+        ## POS Level Shuffling ##
         print("\n\t### Analyzing shuffled corpus w.r.t. POS ###\n")
         for i in range(args.n_shuffle):
             print("\t\tShuffling Dataset..")
@@ -159,34 +220,51 @@ if __name__ == '__main__':
             # Compute feed_forward dict
             feed_dict = cooc.compute_feed_dict()
             
-            filter.filter(feed_dict)
+            with open(os.path.join(raws_path, f'{lang}_pos_{i}.pickle'), 'wb') as handle:
+                pickle.dump(feed_dict, 
+                            handle, 
+                            protocol=pickle.HIGHEST_PROTOCOL)
+            
+            if args.analysis:
+                filter.filter(feed_dict)
 
-            analysis_lang = metrics.compute_metrics(feed_dict=feed_dict)
+                analysis_lang = metrics.compute_metrics(feed_dict=feed_dict)
 
-            analysis[lang]['pos_shuffled_%s' % i] = analysis_lang
+                analysis[lang]['pos_shuffled_%s' % i] = analysis_lang
+        
+        
+        ##### End of Boostrapping #####
+        
          
-        # We save for each language to allow early termination    
-        save_analysis(analysis = analysis,
-                      language = lang,
-                      size = args.size,
-                      n_shuffle = args.n_shuffle,
-                      dataset = args.dataset)
+        if args.analysis:
+            # We save for each language to allow early termination    
+            save_analysis(analysis = analysis,
+                        language = lang,
+                        size = args.size,
+                        n_shuffle = args.n_shuffle,
+                        dataset = args.dataset,
+                        split = args.split,
+                        ordered = args.ordered,
+                        window_size = args.window_size)
         
         
-    ### End of Analysis ##
+    ####### End of Analysis #######
     print("\n\n############ End of analysis ############\n\n")
 
     ### Create CSV
-    
-    from_dict_to_csv(res_dict = analysis,
-                     size = args.size,
-                     n_shuffle = args.n_shuffle,
-                     dataset = args.dataset,
-                     filters = args.filters)
+    if args.analysis:
+        from_dict_to_csv(res_dict = analysis,
+                        size = args.size,
+                        n_shuffle = args.n_shuffle,
+                        dataset = args.dataset,
+                        filters = args.filters,
+                        split = args.split,
+                        ordered = args.ordered,
+                        window_size = args.window_size)
 
     ### Plot
-
-    if args.plot:
+    
+    if args.analysis and args.plot:
         plotter = Plotter(analysis = analysis,
                           args = args)
         plotter.plot()
