@@ -9,6 +9,7 @@ from datasets import load_dataset
 import spacy
 
 from config import spacy_lang_names
+from hugging_face_token import USER_TOKEN
 
 
 def retrieve_text_from_wikipedia(language: str,
@@ -79,7 +80,7 @@ def retrieve_text_from_oscar(language: str,
     """
     # Retrieve corpus
     unshuffled_corpus = load_dataset("oscar-corpus/OSCAR-2201",
-                          use_auth_token="***REMOVED***", # required
+                          use_auth_token=USER_TOKEN, # required
                           language=language, 
                           streaming=True, # optional
                           split="train") 
