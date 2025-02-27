@@ -94,6 +94,9 @@ def retrieve_text_from_oscar(language: str,
         prv_idx = 0 
         counter = 0
         num = 0
+        # Takes a long time so adding tqdm bar...
+        pbar = tqdm.tqdm(total = size, desc='Processing', bar_format="{l_bar}{bar} {n_fmt}/{total_fmt}") 
+        
         while counter < 1e7: # Safety if all fail
             counter += 1
             
@@ -115,9 +118,11 @@ def retrieve_text_from_oscar(language: str,
             articles_idx[num] = (prv_idx, prv_idx + len(_text))
             prv_idx = prv_idx + len(_text)
             num += 1
+            pbar.update(len(_text))
             # Check for size limit
             if prv_idx >= size:
                 break
+        pbar.close()
             
         if len(text) < size:
             print("### ERROR: TEXT IS TO SMALL ###")
