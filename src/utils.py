@@ -95,7 +95,7 @@ def retrieve_text_from_oscar(language: str,
         counter = 0
         num = 0
         # Takes a long time so adding tqdm bar...
-        pbar = tqdm.tqdm(total = size, desc='Processing', bar_format="{l_bar}{bar} {n_fmt}/{total_fmt}") 
+        pbar = tqdm.tqdm(total = size, desc='Processing', bar_format="{l_bar}{bar} | {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") 
         
         while counter < 1e7: # Safety if all fail
             counter += 1
