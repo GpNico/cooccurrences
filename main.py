@@ -61,6 +61,11 @@ parser.add_argument('--dataset',
                     default='oscar',
                     dest='dataset',
                     help='We have wikipedia with only en, fr, de. And we have oscar with all spacy languages.')
+parser.add_argument('--language',
+                    type=str,
+                    default='None',
+                    dest='language',
+                    help='Which language to compute. If None then use config file.')
 parser.add_argument("--analysis", # No Need 
                     action = 'store_true',
                     help = "If True then metrics & filter are computed.")
@@ -102,7 +107,10 @@ if __name__ == '__main__':
             exist_ok = True
         )
         
-        languages = [lang for lang, b in languages2compute.items() if b]
+        if args.language == 'None':
+            languages = [lang for lang, b in languages2compute.items() if b]
+        else:
+            languages = [args.language]
         
         ## Only convert the results to csv
         if args.csv:
