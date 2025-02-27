@@ -103,10 +103,20 @@ def retrieve_text_from_oscar(language: str,
             # Sample jsonl file
             filename = np.random.choice(filenames)
     
+            """
+            # Reservoir Sampling technique:
             with open(filename, "r", encoding="utf-8") as f:
                 for i, line in enumerate(f, start=1):
                     if np.random.randint(1, i+1) == 1:  # Reservoir sampling
                         chosen_line = line
+            """
+            # Brute force approach: we load everything then sample
+            with open(filename, "r", encoding="utf-8") as f:
+                lines = f.readlines()  # Load all lines into a list
+
+            chosen_line = np.random.choice(lines)  # Select a random line
+            
+            
             try:
                 sample = json.loads(chosen_line)  # Manually parse JSON
             except json.JSONDecodeError as e:
@@ -140,16 +150,19 @@ def retrieve_text_from_oscar(language: str,
         text = ''
         articles_idx = {}
         prv_idx = 0 
+        pbar = tqdm.tqdm(total = size, desc='Processing', bar_format="{l_bar}{bar} | {n_fmt}/{total_fmt} [{elapsed}<{remaining}]")
         for num, d in enumerate(corpus):
             #print(f"Num: {num}; Size: {prv_idx}")
             _text = d['text']
             text += _text
             articles_idx[num] = (prv_idx, prv_idx + len(_text))
             prv_idx = prv_idx + len(_text)
+            pbar.update(len(_text))
             # Check for size limit
             if prv_idx >= size:
                 break
-            
+        pbar.close()
+    
     text = text.lower()
     return prv_idx, text, articles_idx
 
