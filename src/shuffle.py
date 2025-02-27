@@ -64,9 +64,10 @@ class Shuffler:
         # Here we can't do this directly because of Segmentation Fault
         # we need to devide text in subtexts.
         n_articles = len(articles_idx)
+        
         articles = np.arange(0, 
                              n_articles, 
-                             n_articles//n_subsets)
+                             max(1, n_articles//n_subsets))
 
         for k in tqdm.tqdm(range(len(articles))):
             article = articles[k]

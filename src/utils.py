@@ -114,7 +114,8 @@ def retrieve_text_from_oscar(language: str,
             with open(filename, "r", encoding="utf-8") as f:
                 lines = f.readlines()  # Load all lines into a list
 
-            chosen_line = np.random.choice(lines)  # Select a random line
+            rd_idx = np.random.randint(len(lines))
+            chosen_line = lines[rd_idx]  # Select a random line
             
             
             try:
