@@ -4,6 +4,8 @@ import tqdm
 import pandas as pd
 import numpy as np
 import pickle
+import json
+import glob
 
 from datasets import load_dataset
 import spacy
@@ -81,33 +83,65 @@ def retrieve_text_from_oscar(language: str,
     """
     # Retrieve corpus
     if jean_zay:
+        # For some obscure reasons streaming the dataset using load_dataset doesn't work
+        # So we'll have to manually do it.
         dataset_path = os.environ['DSDIR'] + f'/OSCAR/{language}_meta'
-        unshuffled_corpus = load_dataset('json',
-                                         data_files=f"{dataset_path}/*.jsonl",
-                                         streaming = True,
-                                         split = 'train')
+        filenames = glob.glob(f"{dataset_path}/{language}_meta_part_*.jsonl")
+        
+        # /!\ For now we load the whole text but might be improved in future versions /!\
+        text = ''
+        articles_idx = {}
+        prv_idx = 0 
+        counter = 0
+        while counter < 1e7: # Safety if all fail
+            
+            # Sample jsonl file
+            filename = np.random.choice(filenames)
+    
+            with open(filename, "r", encoding="utf-8") as f:
+                for i, line in enumerate(f, start=1):
+                    if np.random.randint(1, i+1) == 1:  # Reservoir sampling
+                        chosen_line = line
+            try:
+                sample = json.loads(chosen_line)  # Manually parse JSON
+            except json.JSONDecodeError as e:
+                continue  # Skip bad lines but keep processing
+            
+            #print(f"Num: {num}; Size: {prv_idx}")
+            _text = sample['content']
+            text += _text
+            articles_idx[num] = (prv_idx, prv_idx + len(_text))
+            prv_idx = prv_idx + len(_text)
+            # Check for size limit
+            if prv_idx >= size:
+                break
+            
+        if len(text) < size:
+            print("### ERROR: TEXT IS TO SMALL ###")
+        
     else:
         unshuffled_corpus = load_dataset("oscar-corpus/OSCAR-2201",
                             use_auth_token=USER_TOKEN, # required
                             language=language, 
                             streaming=True, # optional
                             split="train") 
-    corpus = unshuffled_corpus.shuffle(buffer_size=max_articles)#, seed=42)
-                                                              # No seed, also buffer_size big
-    
-    # /!\ For now we load the whole text but might be improved in future versions /!\
-    text = ''
-    articles_idx = {}
-    prv_idx = 0 
-    for num, d in enumerate(corpus):
-        #print(f"Num: {num}; Size: {prv_idx}")
-        _text = d['text']
-        text += _text
-        articles_idx[num] = (prv_idx, prv_idx + len(_text))
-        prv_idx = prv_idx + len(_text)
-        # Check for size limit
-        if prv_idx >= size:
-            break
+        corpus = unshuffled_corpus.shuffle(buffer_size=max_articles)#, seed=42)
+                                                                # No seed, also buffer_size big
+        
+        # /!\ For now we load the whole text but might be improved in future versions /!\
+        text = ''
+        articles_idx = {}
+        prv_idx = 0 
+        for num, d in enumerate(corpus):
+            #print(f"Num: {num}; Size: {prv_idx}")
+            _text = d['text']
+            text += _text
+            articles_idx[num] = (prv_idx, prv_idx + len(_text))
+            prv_idx = prv_idx + len(_text)
+            # Check for size limit
+            if prv_idx >= size:
+                break
+            
     text = text.lower()
     return prv_idx, text, articles_idx
 
