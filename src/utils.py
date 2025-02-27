@@ -61,6 +61,7 @@ def retrieve_text_from_wikipedia(language: str,
 
 def retrieve_text_from_oscar(language: str,
                              size: int,
+                             jean_zay: bool = False,
                              max_articles: int = 20000):
     """
         Compute the texts from OSCAR according to idx.
@@ -79,11 +80,18 @@ def retrieve_text_from_oscar(language: str,
                                 and l is its length.
     """
     # Retrieve corpus
-    unshuffled_corpus = load_dataset("oscar-corpus/OSCAR-2201",
-                          use_auth_token=USER_TOKEN, # required
-                          language=language, 
-                          streaming=True, # optional
-                          split="train") 
+    if jean_zay:
+        dataset_path = os.environ['DSDIR'] + f'/OSCAR/{language}_meta'
+        unshuffled_corpus = load_dataset('json',
+                                         data_files=f"{dataset_path}/*.jsonl",
+                                         streaming = True,
+                                         split = 'train')
+    else:
+        unshuffled_corpus = load_dataset("oscar-corpus/OSCAR-2201",
+                            use_auth_token=USER_TOKEN, # required
+                            language=language, 
+                            streaming=True, # optional
+                            split="train") 
     corpus = unshuffled_corpus.shuffle(buffer_size=max_articles)#, seed=42)
                                                               # No seed, also buffer_size big
     

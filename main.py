@@ -75,6 +75,9 @@ parser.add_argument('--plot', # No need
 parser.add_argument('--csv', # No need
                     action='store_true',
                     help='Convert dict results into csv')
+parser.add_argument('--jean_zay', # No need
+                    action='store_true',
+                    help='If on Jean Zay load OSCAR from disk.')
 args = parser.parse_args()
 
 args.metrics = args.metrics.split('-')
@@ -160,7 +163,8 @@ if __name__ == '__main__':
             elif args.dataset == "oscar":
                 text_size, text, articles_idx = retrieve_text_from_oscar(
                                         language = lang,
-                                        size = args.size
+                                        size = args.size,
+                                        jean_zay = args.jean_zay
                                         )
             else:
                 raise Exception(f"No such dataset as {args.dataset}.")
